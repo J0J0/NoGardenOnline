@@ -1,48 +1,74 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Frontend.NoGardenOnline (app) where
 
-import Protolude hiding (State, lines)
-import qualified Data.Array.IArray as A
+import Protolude hiding (State, state, lines)
+
+import           Control.Monad.Fix        (MonadFix)
+import qualified Data.Array.IArray  as A
+import qualified Data.Text          as T
 
 import Reflex.Dom
 
 type M t m = (DomBuilder t m, PostBuild t m, MonadSample t m)
 
-app :: M t m => m ()
-app = do
+app :: (M t m, MonadFix m, MonadHold t m) => m ()
+app = mdo
     el "h1" $ text "NoGardenOnline"
-    state <- pure $ constDyn testState
-    boardW state
+    state <- holdDyn testState $
+        leftmost [ attachWith handle_click (current state) (tileClick ev)
+                 , attachWith handle_hover (current state) (tileHover ev) ]
+    ev <- boardW state
     return ()
+  where
+    handle_click :: State -> Coord -> State
+    handle_click  = const . addLine
+    
+    handle_hover :: State -> Coord -> State
+    handle_hover = flip hover
 
 boardW :: M t m
-       => Dynamic t State -> m (Event t Coord)
+       => Dynamic t State -> m (TileEvents t)
 boardW state = do
     divClass "board" $ do
-        y_max <- sample $ (snd . boardMax . board) <$> current state
-        leftmost <$> mapM (rowW state) [y_max, y_max-1 .. -1]
+        y_max <- sample $ (snd . boardMax' . board) <$> current state
+        leftmostTileEvents <$> mapM (rowW state) [y_max, y_max-1 .. -1]
 
 rowW :: M t m
-     => Dynamic t State -> Int -> m (Event t Coord)
+     => Dynamic t State -> Int -> m (TileEvents t)
 rowW state y = divClass "row" $ do
-    x_max <- sample $ (fst . boardMax . board) <$> current state
-    leftmost <$> mapM (\ x -> tileW state (x,y)) [-1 .. x_max]
- 
+    x_max <- sample $ (fst . boardMax' . board) <$> current state
+    leftmostTileEvents <$> mapM (\ x -> tileW state (x,y)) [-1 .. x_max]
+
+leftmostTileEvents :: Reflex t => [TileEvents t] -> TileEvents t
+leftmostTileEvents = from_tuple . both leftmost . unzip . map to_tuple
+  where
+    to_tuple :: TileEvents t -> (Event t Coord, Event t Coord)
+    to_tuple ev = (tileClick ev, tileHover ev)
+    from_tuple :: (Event t Coord, Event t Coord) -> TileEvents t
+    from_tuple (clickE,hoverE) = TileEvents clickE hoverE
+
+data TileEvents t = TileEvents { tileClick :: Event t Coord
+                               , tileHover :: Event t Coord }
+
 tileW :: M t m
       => Dynamic t State
-      -> Coord -> m (Event t Coord)
+      -> Coord -> m (TileEvents t)
 tileW state coord = do
     (e, _) <- elDynAttr' "div" ((\ s -> "class" =: ("tile" <> s)) <$> dyn_class) blank
-    return $ coord <$ domEvent Click e
+    return $ (uncurry TileEvents) $ both (coord <$) (domEvent Click e, domEvent Mouseover e)
   where
     dyn_class = ffor state $ \ (State { board = b }) ->
         case b A.! coord of
+            EmptyTile     -> ""
             ObstacleTile  -> " obstacle"
             InvisibleTile -> " invisible"
-            _             -> ""
+            LineTile d1 d2 -> -- FIXME: buggy for d1 == d2
+                T.append " " $ T.toLower $ T.concat $ map show $ sort [d1,d2]
+
 
 
 -----------------------------------------------------------------
@@ -86,7 +112,7 @@ type Board = A.Array Coord Tile
 
 data LineDir = Straight | TurnLeft | TurnRight
 data CardinalDir = North | East | South | West
-    deriving (Enum, Bounded)
+    deriving (Enum, Bounded, Eq, Ord, Show)
 data LineSegment = Segment Coord CardinalDir
 data Line = Line { startSeg    :: LineSegment
                  , directions  :: [LineDir]
@@ -115,11 +141,14 @@ isEmptyTile :: Tile -> Bool
 isEmptyTile EmptyTile = True
 isEmptyTile _         = False
 
-boardMax :: Board -> (Int,Int)
-boardMax = snd . A.bounds
+boardMax', boardMax :: Board -> (Int,Int)
+boardMax' = snd . A.bounds
+boardMax  = both (subtract 1) . boardMax'
 
-boardDims :: Board -> (Int,Int)
-boardDims = both (+1) . snd . A.bounds
+boardDims', boardDims :: Board -> (Int,Int)
+boardDims' = both (+1) . snd . A.bounds
+boardDims  = both (subtract 1) . boardDims'
+
 
 boundaryCoords, boundaryCoordsFree :: Board -> [(CardinalDir, Coord)]
 boundaryCoords = boundaryCoordsFilter (const True)
@@ -177,51 +206,6 @@ drawAll st = globalTranslate st $
              , winningMessage st
              ]
 
-drawBoard :: Board -> Picture
-drawBoard b = pictures $ map (uncurry drawTile) $ A.assocs b
-
-drawTile :: Coord -> Tile -> Picture
-drawTile coord tile = drawAt coord $ color_for tile $ rectangleSolid tS tS
-  where
-    tS = tileSize
-    color_for ObstacleTile = color black
-    color_for _            = color (greyN 0.8)
-
-drawLines :: [Line] -> Picture
-drawLines = pictures . map (drawLine (greyN 0.5))
-
-drawLine :: Color -> Line -> Picture
-drawLine c l =
-    drawAt (startCoord l)
-    $ color c
-    $ rotate (dirToAngle (startDir l))
-    $ drawLineSegments (directions l)
-
-drawCurrentLine :: Line -> Picture
-drawCurrentLine = drawLine (greyN 0.35)
-
-drawPreviewLine :: Line -> Picture
-drawPreviewLine = drawLine lightOrange
-
-drawLineSegments :: [LineDir] -> Picture
-drawLineSegments []       = Blank
-drawLineSegments (ld:lds) = drawLineSegment ld <> transform ld (drawLineSegments lds)
-  where
-    transform :: LineDir -> Picture -> Picture
-    transform Straight  = translate 0 (tileSize+spacing)
-    transform TurnLeft  = turn_trafo (-1)
-    transform TurnRight = turn_trafo   1
-    turn_trafo sign =
-        translate (sign * (tileSize+spacing)) 0 . rotate (sign * 90)
-
-drawLineSegment :: LineDir -> Picture
-drawLineSegment Straight  = rectangleSolid (tileSize/3) tileSize
-drawLineSegment ld        = case ld of TurnLeft  -> draw_turn (-1)  0
-                                       TurnRight -> draw_turn   1  90
-  where
-    th = tileSize/2
-    draw_turn sign phi =
-        translate (sign*th) (-th) $ thickArc phi (phi+90) th (tileSize/3)
 
 drawStartHints :: State -> Picture
 drawStartHints st =
@@ -245,16 +229,6 @@ drawContinueHints st = case currentLine st of
         | otherwise                           = False
     (mx,my) = boardMax (board st)
 
-drawArrow :: Color -> Coord -> CardinalDir -> Picture
-drawArrow c coord dir =
-    drawAt coord
-    $ color c
-    $ rotate (dirToAngle dir)
-    $ pictures [ translate 0 (0-0.05*tS) $ rectangleSolid (0.2*tS) (0.35*tS)
-               , polygon [(0.25*tS,0), (0,0.4*tS), (-0.25*tS,0)]
-               ]
-  where
-    tS = tileSize
 -}
 
 --------------------
@@ -428,7 +402,7 @@ lineSegmentsExt = lineSegments' True
 lineSegments' :: Bool -> Line -> [LineSegment]
 lineSegments' with_end l = case directions l of
     []     -> if with_end then [startSeg l] else []
-    (d:ds) -> startSeg l : lineSegments l'
+    (d:ds) -> startSeg l : lineSegments' with_end l'
       where
         l' = Line { startSeg = Segment c' o'
                   , directions = ds
@@ -449,9 +423,7 @@ lineSegments' with_end l = case directions l of
         turnR = caseDir East South West North
 
 lineTiles :: [LineSegment] -> [(Coord, Tile)]
-lineTiles [] = []
-lineTiles [Segment c dir] = [(c, LineTile dir dir)]
-lineTiles segs = map (uncurry go) (segs `zip` tailDef [] segs) 
+lineTiles segs = map (uncurry go) (segs `zip` tailDef segs segs)
   where
-    go (Segment c1 dir1) (Segment _ dir2) = (c1, LineTile dir1 dir2)
+    go (Segment c1 dir1) (Segment _ dir2) = (c1, LineTile (invertDir dir1) dir2)
 

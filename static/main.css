@@ -41,9 +41,9 @@ div.tile.northeast {
 div.tile.southwest {
     background-image: url("line-south-west.svg")
 }
-div.tile.westeast {
-    background-image: url("line-west-east.svg")
+div.tile.eastwest {
+    background-image: url("line-east-west.svg")
 }
-div.tile.westnorth {
-    background-image: url("line-west-north.svg")
+div.tile.northwest {
+    background-image: url("line-north-west.svg")
 }

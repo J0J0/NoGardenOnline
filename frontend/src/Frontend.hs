@@ -6,7 +6,6 @@
 module Frontend where
 
 import Obelisk.Frontend
-import Obelisk.Configs
 import Obelisk.Route
 import Obelisk.Generated.Static
 
