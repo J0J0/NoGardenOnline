@@ -18,10 +18,11 @@ div.tile {
     width: var(--tilesize);
     height: var(--tilesize);
     margin: 2px;
+    background-color: #cccccc;
 }
 
-div.tile.free {
-    background-color: #cccccc;
+div.tile.invisible {
+    background-color: transparent;
 }
 
 div.tile.obstacle {

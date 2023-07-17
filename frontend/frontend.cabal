@@ -15,6 +15,8 @@ library
                , obelisk-generated-static
                , lens
                , text
+               , protolude >= 0.3
+               , array
   exposed-modules:
     Frontend
     Frontend.NoGardenOnline
@@ -23,6 +25,8 @@ library
                -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
                -- unneeded code
                -Widentities -Wredundant-constraints
+               -- TEMPORARY
+               -Wno-unused-top-binds
   if impl(ghc >= 8.8)
     ghc-options:
                -Wmissing-deriving-strategies
