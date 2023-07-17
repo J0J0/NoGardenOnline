@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -8,47 +9,40 @@ import qualified Data.Array.IArray as A
 
 import Reflex.Dom
 
+type M t m = (DomBuilder t m, PostBuild t m, MonadSample t m)
 
-app :: (DomBuilder t m, PostBuild t m) => m ()
+app :: M t m => m ()
 app = do
     el "h1" $ text "NoGardenOnline"
-    let test_state = testState
-        (x_dim, y_dim) = boardDims (board test_state)
-    state <- pure $ constDyn test_state
-    boardW state x_dim y_dim
+    state <- pure $ constDyn testState
+    boardW state
     return ()
 
-boardW :: (DomBuilder t m, PostBuild t m)
-       => Dynamic t State
-       -> Int -> Int -> m ()
-boardW state col_count row_count = do
+boardW :: M t m
+       => Dynamic t State -> m (Event t Coord)
+boardW state = do
     divClass "board" $ do
-        --rowW state (-1) col_count InvisibleTile
-        mapM_ (\ i -> rowW state i col_count EmptyTile) [row_count-1, row_count-2 .. 0]
-        --rowW state row_count col_count InvisibleTile
+        y_max <- sample $ (snd . boardMax . board) <$> current state
+        leftmost <$> mapM (rowW state) [y_max, y_max-1 .. -1]
 
-rowW :: (DomBuilder t m, PostBuild t m)
-     => Dynamic t State
-     -> Int -> Int -> Tile -> m ()
-rowW state row_index size tile_type = divClass "row" $ do
-    --tileW state (row_index, -1) InvisibleTile
-    mapM_ (\ j -> tileW state (row_index,j) tile_type) [0..size-1]
-    --tileW state (row_index, size) InvisibleTile
+rowW :: M t m
+     => Dynamic t State -> Int -> m (Event t Coord)
+rowW state y = divClass "row" $ do
+    x_max <- sample $ (fst . boardMax . board) <$> current state
+    leftmost <$> mapM (\ x -> tileW state (x,y)) [-1 .. x_max]
  
-tileW :: (DomBuilder t m, PostBuild t m)
+tileW :: M t m
       => Dynamic t State
-      -> Coord -> Tile -> m ()
-tileW state c tile_type =
-    elDynAttr "div" ((\ s -> "class" =: ("tile" <> s)) <$> dyn_class) blank
+      -> Coord -> m (Event t Coord)
+tileW state coord = do
+    (e, _) <- elDynAttr' "div" ((\ s -> "class" =: ("tile" <> s)) <$> dyn_class) blank
+    return $ coord <$ domEvent Click e
   where
-    dyn_class = case tile_type of
-        InvisibleTile -> constDyn " invisible"
-        _             ->
-            ffor state $ \ (State { board = b }) ->
-                case b A.! c of
-                    ObstacleTile  -> " obstacle"
-                    InvisibleTile -> " invisible"
-                    _             -> ""
+    dyn_class = ffor state $ \ (State { board = b }) ->
+        case b A.! coord of
+            ObstacleTile  -> " obstacle"
+            InvisibleTile -> " invisible"
+            _             -> ""
 
 
 -----------------------------------------------------------------
@@ -69,7 +63,12 @@ foldrMay1 f (x:xs) = f x =<< foldrMay1 f xs
 
 testState = State b Nothing []
   where
-    b' = A.listArray ((0,0),(6,6)) (repeat EmptyTile)
+    (bx,by) = (6,5)
+    bounds  = ((-1,-1),(bx+1,by+1))
+    b' = A.listArray bounds $ foreach (A.range bounds) $ \ (x,y) ->
+        if x < 0 || x > bx || y < 0 || y > by
+        then InvisibleTile
+        else EmptyTile
     b = b' A.// [((1,1), ObstacleTile), ((3,2), ObstacleTile)]
     --ls = [l1]
     --l1 = Line (Segment (6,0) West) [Straight, Straight, TurnRight, Straight, TurnLeft, TurnRight]
