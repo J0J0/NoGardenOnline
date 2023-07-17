@@ -1,3 +1,29 @@
-p {
-  color: red;  
+:root {
+    --tilesize: 40px;
+    --light-orange: #ffd787;
+}
+
+div.board {
+    border: 1px solid black;
+    display: inline-block;
+    line-height: 0pt;
+}
+
+div.row {
+    display: block;
+}
+
+div.tile {
+    display: inline-block;
+    width: var(--tilesize);
+    height: var(--tilesize);
+    margin: 2px;
+}
+
+div.tile.free {
+    background-color: #cccccc;
+}
+
+div.tile.obstacle {
+    background-color: black;
 }
