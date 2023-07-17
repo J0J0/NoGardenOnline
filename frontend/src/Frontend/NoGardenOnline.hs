@@ -3,41 +3,52 @@
 
 module Frontend.NoGardenOnline (app) where
 
-import Protolude hiding (State, rotate, lines)
+import Protolude hiding (State, lines)
 import qualified Data.Array.IArray as A
 
 import Reflex.Dom
 
 
-app :: DomBuilder t m => m ()
+app :: (DomBuilder t m, PostBuild t m) => m ()
 app = do
     el "h1" $ text "NoGardenOnline"
-    boardW 8 5
+    let test_state = testState
+        (x_dim, y_dim) = boardDims (board test_state)
+    state <- pure $ constDyn test_state
+    boardW state x_dim y_dim
     return ()
 
-boardW :: DomBuilder t m
-       => Int -> Int -> m ()
-boardW col_count row_count = do
+boardW :: (DomBuilder t m, PostBuild t m)
+       => Dynamic t State
+       -> Int -> Int -> m ()
+boardW state col_count row_count = do
     divClass "board" $ do
-        rowW col_count InvisibleTile
-        mapM_ (rowW col_count) (replicate row_count EmptyTile)
-        rowW col_count InvisibleTile
+        --rowW state (-1) col_count InvisibleTile
+        mapM_ (\ i -> rowW state i col_count EmptyTile) [row_count-1, row_count-2 .. 0]
+        --rowW state row_count col_count InvisibleTile
 
-rowW :: DomBuilder t m
-     => Int -> Tile -> m ()
-rowW size tile_type = divClass "row" $
-    mapM_ tileW $ [InvisibleTile] <> replicate size tile_type <> [InvisibleTile]
+rowW :: (DomBuilder t m, PostBuild t m)
+     => Dynamic t State
+     -> Int -> Int -> Tile -> m ()
+rowW state row_index size tile_type = divClass "row" $ do
+    --tileW state (row_index, -1) InvisibleTile
+    mapM_ (\ j -> tileW state (row_index,j) tile_type) [0..size-1]
+    --tileW state (row_index, size) InvisibleTile
  
-tileW :: DomBuilder t m
-      => Tile -> m ()
-tileW tile_type = do
-    divClass ("tile" <> extra_class) blank
-    return ()
+tileW :: (DomBuilder t m, PostBuild t m)
+      => Dynamic t State
+      -> Coord -> Tile -> m ()
+tileW state c tile_type =
+    elDynAttr "div" ((\ s -> "class" =: ("tile" <> s)) <$> dyn_class) blank
   where
-    extra_class = case tile_type of
-        ObstacleTile  -> " obstacle"
-        InvisibleTile -> " invisible"
-        _             -> ""
+    dyn_class = case tile_type of
+        InvisibleTile -> constDyn " invisible"
+        _             ->
+            ffor state $ \ (State { board = b }) ->
+                case b A.! c of
+                    ObstacleTile  -> " obstacle"
+                    InvisibleTile -> " invisible"
+                    _             -> ""
 
 
 -----------------------------------------------------------------
@@ -56,9 +67,9 @@ foldrMay1 _ [x]    = return x
 foldrMay1 f (x:xs) = f x =<< foldrMay1 f xs
 
 
-testState = State b [] Nothing []
+testState = State b Nothing []
   where
-    b' = A.listArray ((0,0),(6,5)) (repeat EmptyTile)
+    b' = A.listArray ((0,0),(6,6)) (repeat EmptyTile)
     b = b' A.// [((1,1), ObstacleTile), ((3,2), ObstacleTile)]
     --ls = [l1]
     --l1 = Line (Segment (6,0) West) [Straight, Straight, TurnRight, Straight, TurnLeft, TurnRight]
@@ -67,7 +78,7 @@ testState = State b [] Nothing []
 
 
 data Tile = EmptyTile
-          | UsedTile
+          | LineTile CardinalDir CardinalDir
           | ObstacleTile
           | InvisibleTile
           
@@ -83,7 +94,6 @@ data Line = Line { startSeg    :: LineSegment
                  }
           
 data State = State { board :: Board
-                   , lines :: [Line]
                    , previewLine :: Maybe Line
                    , currentLine :: [Line]
                    }
@@ -325,18 +335,16 @@ addLine :: State -> State
 addLine st = case previewLine st of
     Nothing -> st
     Just l  -> if lineComplete st l
-               then State { board = board st A.// gen_updates l
-                          , lines = (maybeToList $ joinRevLines (l : currentLine st)) ++ lines st
+               then State { board = maybe (board st) (board st A.//) (lineTiles . lineSegmentsExt <$> joinRevLines (l : currentLine st))
                           , currentLine = []
                           , previewLine = Nothing
                           }
                else if isEmptyLine l then st
-                    else st { board = board st A.// gen_updates l
-                            , currentLine = l : currentLine st
-                            , previewLine = Nothing
-                            }
-  where
-    gen_updates = map (\ t -> (t, UsedTile)) . lineCoordinates
+                    else let new_current_line = l : currentLine st
+                         in st { board = maybe (board st) (board st A.//) (lineTiles . lineSegmentsExt <$> joinRevLines new_current_line)
+                               , currentLine = new_current_line
+                               , previewLine = Nothing
+                               }
 
 lineComplete :: State -> Line -> Bool
 lineComplete st l =
@@ -385,6 +393,7 @@ joinTwoLines l1 l2 = do
 
 --------------------
 
+{-
 cancelCurrentLine :: State -> State
 cancelCurrentLine st = case currentLine st of
     [] -> st
@@ -394,27 +403,32 @@ cancelCurrentLine st = case currentLine st of
              }
   where
     gen_updates = map (\ t -> (t, EmptyTile)) . concatMap lineCoordinates
+-}
 
 --------------------
 
 resetBoard :: State -> State
 resetBoard st = State { board = reset_tile `A.amap` board st
-                      , lines = []
                       , previewLine = Nothing
                       , currentLine = []
                       }
   where
-    reset_tile UsedTile = EmptyTile
-    reset_tile tile     = tile
+    reset_tile (LineTile _ _) = EmptyTile
+    reset_tile tile           = tile
 
 --------------------
 
-lineCoordinates :: Line -> [Coord]
-lineCoordinates = map (\ (Segment coord _) -> coord) . lineSegments
+-- lineCoordinates :: Line -> [Coord]
+-- lineCoordinates = map (\ (Segment coord _) -> coord) . lineSegments
 
 lineSegments :: Line -> [LineSegment]
-lineSegments l = case directions l of
-    []     -> []
+lineSegments = lineSegments' False
+lineSegmentsExt :: Line -> [LineSegment]
+lineSegmentsExt = lineSegments' True
+
+lineSegments' :: Bool -> Line -> [LineSegment]
+lineSegments' with_end l = case directions l of
+    []     -> if with_end then [startSeg l] else []
     (d:ds) -> startSeg l : lineSegments l'
       where
         l' = Line { startSeg = Segment c' o'
@@ -423,8 +437,8 @@ lineSegments l = case directions l of
         c' = step (startCoord l)
         (step, o') = case d of
             Straight  -> (caseDir up right down left, startDir l)
-            TurnLeft  -> (caseDir left up right down, turnL        )
-            TurnRight -> (caseDir right down left up, turnR        )
+            TurnLeft  -> (caseDir left up right down, turnL     )
+            TurnRight -> (caseDir right down left up, turnR     )
         caseDir n e s w =
             case startDir l of { North -> n; East  -> e;
                                  South -> s; West  -> w }
@@ -434,3 +448,11 @@ lineSegments l = case directions l of
         left  = first  (subtract 1)
         turnL = caseDir West North East South
         turnR = caseDir East South West North
+
+lineTiles :: [LineSegment] -> [(Coord, Tile)]
+lineTiles [] = []
+lineTiles [Segment c dir] = [(c, LineTile dir dir)]
+lineTiles segs = map (uncurry go) (segs `zip` tailDef [] segs) 
+  where
+    go (Segment c1 dir1) (Segment _ dir2) = (c1, LineTile dir1 dir2)
+

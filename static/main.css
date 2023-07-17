@@ -28,3 +28,22 @@ div.tile.invisible {
 div.tile.obstacle {
     background-color: black;
 }
+
+div.tile.northsouth {
+    background-image: url("line-north-south.svg")
+}
+div.tile.eastsouth {
+    background-image: url("line-east-south.svg")
+}
+div.tile.northeast {
+    background-image: url("line-north-east.svg")
+}
+div.tile.southwest {
+    background-image: url("line-south-west.svg")
+}
+div.tile.westeast {
+    background-image: url("line-west-east.svg")
+}
+div.tile.westnorth {
+    background-image: url("line-west-north.svg")
+}
