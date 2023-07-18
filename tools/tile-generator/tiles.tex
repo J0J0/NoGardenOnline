@@ -1,0 +1,38 @@
+\documentclass[tikz]{standalone}
+\usepackage{xcolor}
+
+\newwrite\script
+\immediate\openout\script=convert-pdf-to-svgs.sh
+\AtEndDocument{\immediate\closeout\script}
+\newcommand{\scriptAdd}[1]{\immediate\write\script{#1}}
+
+% "radius", i.e. half the side length of the tile
+\def\size{20px}
+\let\r=\size
+
+\definecolor{lineColor}{HTML}{808080}
+
+\tikzset{ line/.style={ color=lineColor
+                      , line width={2*\r/3}
+                      , line cap=rect
+                      , radius=\size
+                      , delta angle=90}
+}
+
+\newcommand{\linePicture}[2]{%
+    \scriptAdd{pdftocairo -svg -f \thepage\space -l \thepage\space \jobname.pdf #1.svg}
+    \begin{tikzpicture}
+        \path[clip] (-\size,-\size) rectangle (\size,\size);
+        \draw[line] #2;
+    \end{tikzpicture}
+}
+
+\begin{document}
+\linePicture{line-north-south}{(0,\r) -- (0,-\r)}
+\linePicture{line-east-west}{(\r,0) -- (-\r,0)}
+
+\linePicture{line-north-east}{(0,\r)  arc[start angle=180]}
+\linePicture{line-east-south}{(\r,0)  arc[start angle=90]}
+\linePicture{line-south-west}{(0,-\r) arc[start angle=0]}
+\linePicture{line-north-west}{(-\r,0) arc[start angle=270]}
+\end{document}
