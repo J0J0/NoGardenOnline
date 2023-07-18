@@ -17,7 +17,7 @@ div.tile {
     display: inline-block;
     width: var(--tilesize);
     height: var(--tilesize);
-    margin: 2px;
+    margin: 1px;
     background-color: #cccccc;
 }
 
