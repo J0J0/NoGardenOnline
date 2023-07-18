@@ -11,10 +11,11 @@
 \let\r=\size
 
 \definecolor{lineColor}{HTML}{808080}
+\definecolor{currentlineColor}{HTML}{595959}
+\definecolor{solvedlineColor}{HTML}{61c200}
 \definecolor{lightOrange}{HTML}{ffd787}
 
-\tikzset{ line/.style={ color=lineColor
-                      , line width={2*\r/3}
+\tikzset{ line/.style={ line width={2*\r/3}
                       , line cap=rect
                       , radius=\size
                       , delta angle=90}
@@ -29,9 +30,9 @@
 }
 
 
-\newcommand{\linePicture}[2]{%
-    \begin{pic}{#1}
-        \draw[line] #2;
+\newcommand{\linePicture}[3][]{%
+    \begin{pic}[#1]{#2}
+        \draw[line] #3;
     \end{pic}
 }
 
@@ -45,13 +46,33 @@
 }
 
 \begin{document}
-\linePicture{line-north-south}{(0,\r) -- (0,-\r)}
-\linePicture{line-east-west}{(\r,0) -- (-\r,0)}
+\linePicture[color=lineColor]{line-north-south}           {(0,\r) -- (0,-\r)}
+\linePicture[color=lineColor]{line-east-west}             {(\r,0) -- (-\r,0)}
+\linePicture[color=lineColor]{line-north-east}            {(0,\r)  arc[start angle=180]}
+\linePicture[color=lineColor]{line-east-south}            {(\r,0)  arc[start angle=90]}
+\linePicture[color=lineColor]{line-south-west}            {(0,-\r) arc[start angle=0]}
+\linePicture[color=lineColor]{line-north-west}            {(-\r,0) arc[start angle=270]}
 
-\linePicture{line-north-east}{(0,\r)  arc[start angle=180]}
-\linePicture{line-east-south}{(\r,0)  arc[start angle=90]}
-\linePicture{line-south-west}{(0,-\r) arc[start angle=0]}
-\linePicture{line-north-west}{(-\r,0) arc[start angle=270]}
+\linePicture[color=lightOrange]{line-hint-north-south}    {(0,\r) -- (0,-\r)}
+\linePicture[color=lightOrange]{line-hint-east-west}      {(\r,0) -- (-\r,0)}
+\linePicture[color=lightOrange]{line-hint-north-east}     {(0,\r)  arc[start angle=180]}
+\linePicture[color=lightOrange]{line-hint-east-south}     {(\r,0)  arc[start angle=90]}
+\linePicture[color=lightOrange]{line-hint-south-west}     {(0,-\r) arc[start angle=0]}
+\linePicture[color=lightOrange]{line-hint-north-west}     {(-\r,0) arc[start angle=270]}
+
+\linePicture[color=currentlineColor]{curline-north-south} {(0,\r) -- (0,-\r)}
+\linePicture[color=currentlineColor]{curline-east-west}   {(\r,0) -- (-\r,0)}
+\linePicture[color=currentlineColor]{curline-north-east}  {(0,\r)  arc[start angle=180]}
+\linePicture[color=currentlineColor]{curline-east-south}  {(\r,0)  arc[start angle=90]}
+\linePicture[color=currentlineColor]{curline-south-west}  {(0,-\r) arc[start angle=0]}
+\linePicture[color=currentlineColor]{curline-north-west}  {(-\r,0) arc[start angle=270]}
+
+\linePicture[color=solvedlineColor]{solline-north-south}  {(0,\r) -- (0,-\r)}
+\linePicture[color=solvedlineColor]{solline-east-west}    {(\r,0) -- (-\r,0)}
+\linePicture[color=solvedlineColor]{solline-north-east}   {(0,\r)  arc[start angle=180]}
+\linePicture[color=solvedlineColor]{solline-east-south}   {(\r,0)  arc[start angle=90]}
+\linePicture[color=solvedlineColor]{solline-south-west}   {(0,-\r) arc[start angle=0]}
+\linePicture[color=solvedlineColor]{solline-north-west}   {(-\r,0) arc[start angle=270]}
 
 \arrowPicture{hint-arrow-right}{0}
 \arrowPicture{hint-arrow-up}{90}

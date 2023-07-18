@@ -1,8 +1,8 @@
-.PHONY: all tex2pdf pdf2svgs
+.PHONY: all tex2pdf pdf pdf2svgs
 
 all: tex2pdf pdf2svgs
 
-tex2pdf:
+tex2pdf pdf:
 	pdflatex tiles.tex
 
 pdf2svgs:

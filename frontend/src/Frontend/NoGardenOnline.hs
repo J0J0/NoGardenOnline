@@ -9,6 +9,7 @@ import Protolude hiding (State, state, lines)
 
 import           Control.Monad.Fix        (MonadFix)
 import qualified Data.Array.IArray  as A
+import           Data.List                (lookup)
 import qualified Data.Text          as T
 
 import Reflex.Dom
@@ -61,14 +62,64 @@ tileW state coord = do
     (e, _) <- elDynAttr' "div" ((\ s -> "class" =: ("tile" <> s)) <$> dyn_class) blank
     return $ (uncurry TileEvents) $ both (coord <$) (domEvent Click e, domEvent Mouseover e)
   where
-    dyn_class = ffor state $ \ (State { board = b }) ->
-        case b A.! coord of
-            EmptyTile     -> ""
-            ObstacleTile  -> " obstacle"
-            InvisibleTile -> " invisible"
-            LineTile d1 d2 -> -- FIXME: buggy for d1 == d2
-                T.append " " $ T.toLower $ T.concat $ map show $ sort [d1,d2]
-
+    dyn_class =
+        ffor state $ \ (State {board = b, previewLine = prev, currentLine = cur}) ->
+            case b A.! coord of
+                EmptyTile     ->
+                    display_prev_line prev <> continue_hint prev cur b
+                ObstacleTile  ->
+                    " obstacle"
+                InvisibleTile ->
+                    " invisible" <> start_hint prev cur b <> continue_hint prev cur b
+                lt@(LineTile _ _) -> -- FIXME: buggy for equal line tile dirs
+                    " " <> line_tile_to_classname lt <> highlight_current cur <> highlight_solved cur b
+    
+    display_prev_line prev = fromMaybe "" $ do
+        l  <- prev
+        lt <- lookup coord (lineToTiles l)
+        return $ " hint" <> line_tile_to_classname lt
+    
+    continue_hint Nothing (l:_) b = case lastMay (lineSegments l) of
+        Nothing  -> ""  -- Note: should never happen
+        Just seg -> case lookup coord (filter (legal_move b) (cont_coord seg)) of
+            Nothing    -> ""
+            Just North -> " arrowup"
+            Just East  -> " arrowright"
+            Just South -> " arrowdown"
+            Just West  -> " arrowleft"
+    continue_hint _ _ _ = ""
+    
+    start_hint Nothing [] b = case lookup coord (boundaryCoordsFree b) of
+        Nothing    -> ""
+        Just North -> " arrowdown"
+        Just East  -> " arrowleft"
+        Just South -> " arrowup"
+        Just West  -> " arrowright"
+    start_hint _ _ _ = ""
+    
+    highlight_current ls = case joinRevLines ls of
+        Nothing -> ""
+        Just l  -> if coord `elem` lineCoordinates l
+                   then " current"
+                   else ""
+    
+    highlight_solved cur b = case (cur, any isEmptyTile b) of
+        ([], False) -> " solved"
+        (_, _)      -> ""
+    
+    line_tile_to_classname (LineTile d1 d2) =
+        T.toLower $ T.concat $ map show $ sort [d1,d2]
+    
+    cont_coord (Segment (x,y) dir) = case orientationOf dir of
+        Vertical   -> [((x-1,y), West),  ((x+1,y), East)]
+        Horizontal -> [((x,y-1), South), ((x,y+1), North)]
+    
+    legal_move b (c@(x,y), _)
+        | x < 0 || y < 0 || x > mx || y > my  = True
+        | isEmptyTile (b A.! c)        = True
+        | otherwise                           = False
+      where
+        (mx,my) = boardMax b
 
 
 -----------------------------------------------------------------
@@ -150,19 +201,19 @@ boardDims' = both (+1) . snd . A.bounds
 boardDims  = both (subtract 1) . boardDims'
 
 
-boundaryCoords, boundaryCoordsFree :: Board -> [(CardinalDir, Coord)]
+boundaryCoords, boundaryCoordsFree :: Board -> [(Coord, CardinalDir)]
 boundaryCoords = boundaryCoordsFilter (const True)
 boundaryCoordsFree b = boundaryCoordsFilter (isEmptyTile . (b A.!)) b
 
 -- filter based on nearest coordinate inside the board
-boundaryCoordsFilter :: (Coord -> Bool) -> Board -> [(CardinalDir, Coord)]
+boundaryCoordsFilter :: (Coord -> Bool) -> Board -> [(Coord, CardinalDir)]
 boundaryCoordsFilter f b = bdy_n ++ bdy_e ++ bdy_s ++ bdy_w
   where
     (mx,my) = boardMax b
-    bdy_w   = [(West,  (-1,  k)) | k <- [0..my], f (0, k)]
-    bdy_e   = [(East,  (mx+1,k)) | k <- [0..my], f (mx,k)]
-    bdy_s   = [(South, (k,  -1)) | k <- [0..mx], f (k, 0)]
-    bdy_n   = [(North, (k,my+1)) | k <- [0..mx], f (k,my)]
+    bdy_w   = [((-1,  k), West)  | k <- [0..my], f (0, k)]
+    bdy_e   = [((mx+1,k), East)  | k <- [0..my], f (mx,k)]
+    bdy_s   = [((k,  -1), South) | k <- [0..mx], f (k, 0)]
+    bdy_n   = [((k,my+1), North) | k <- [0..mx], f (k,my)]
 
 startCoord :: Line -> Coord
 startCoord l = case startSeg l of Segment c _ -> c
@@ -187,62 +238,6 @@ guardEmptyLine l = case directions l of
 
 isEmptyLine :: Line -> Bool
 isEmptyLine = isNothing . guardEmptyLine
-
---------------------
-
-{-
-drawAll :: State -> Picture
-drawAll st = globalTranslate st $
-    pictures [ drawBoard (board st)
-             , drawLines (lines st)
-             , maybe Blank drawCurrentLine (joinRevLines . currentLine $ st)
-             , maybe Blank drawPreviewLine (previewLine st)
-             , case (previewLine st, currentLine st) of
-                 (Nothing, []) -> drawStartHints st
-                 _             -> Blank
-             , case (previewLine st, currentLine st) of
-                 (Nothing, (_:_)) -> drawContinueHints st
-                 _                -> Blank
-             , winningMessage st
-             ]
-
-
-drawStartHints :: State -> Picture
-drawStartHints st =
-    pictures $ map (uncurry . flip $ drawArrow lightOrange) boundary
-  where
-    (mx,my)  = boardMax (board st)
-    boundary = map (first invertDir) $ boundaryCoordsFree (board st)
-
-drawContinueHints :: State -> Picture
-drawContinueHints st = case currentLine st of
-    []    -> Blank
-    (l:_) -> maybe Blank go $ lastMay (lineSegments l)
-  where
-    go = pictures . map (uncurry $ drawArrow lightOrange) . filter legal_move . cont_coord
-    cont_coord (Segment (x,y) dir) = case orientationOf dir of
-        Vertical   -> [((x-1,y), West),  ((x+1,y), East)]
-        Horizontal -> [((x,y-1), South), ((x,y+1), North)]
-    legal_move (c@(x,y), _)
-        | x < 0 || y < 0 || x > mx || y > my  = True
-        | isEmptyTile (board st A.! c)        = True
-        | otherwise                           = False
-    (mx,my) = boardMax (board st)
-
--}
-
---------------------
-
-{-
-eventHandler :: Event -> State -> State
-eventHandler ev st =
-    case eventTranslate st ev of
-        EventMotion pt -> hover (toCoord pt) st
-        EventKey (Ev.MouseButton Ev.LeftButton)  Ev.Up _ _ -> addLine st
-        EventKey (Ev.MouseButton Ev.RightButton) Ev.Up _ _ -> cancelCurrentLine st
-        EventKey (Ev.Char 'r')                   Ev.Up _ _ -> resetBoard st
-        _ -> st
--}
 
 --------------------
 
@@ -282,7 +277,6 @@ continueLine st x y =
   where
     mk_line = Just .: emptyLine
 
--- buggy for non-empty line!
 extendLine :: State -> Line -> Line
 extendLine st l =
     l { directions = directions l ++ extendStraight st seg }
@@ -308,13 +302,13 @@ addLine :: State -> State
 addLine st = case previewLine st of
     Nothing -> st
     Just l  -> if lineComplete st l
-               then State { board = maybe (board st) (board st A.//) (lineTiles . lineSegmentsExt <$> joinRevLines (l : currentLine st))
+               then State { board = maybe (board st) (board st A.//) (lineToTiles <$> joinRevLines (l : currentLine st))
                           , currentLine = []
                           , previewLine = Nothing
                           }
                else if isEmptyLine l then st
                     else let new_current_line = l : currentLine st
-                         in st { board = maybe (board st) (board st A.//) (lineTiles . lineSegmentsExt <$> joinRevLines new_current_line)
+                         in st { board = maybe (board st) (board st A.//) (lineToTiles <$> joinRevLines new_current_line)
                                , currentLine = new_current_line
                                , previewLine = Nothing
                                }
@@ -391,8 +385,8 @@ resetBoard st = State { board = reset_tile `A.amap` board st
 
 --------------------
 
--- lineCoordinates :: Line -> [Coord]
--- lineCoordinates = map (\ (Segment coord _) -> coord) . lineSegments
+lineCoordinates :: Line -> [Coord]
+lineCoordinates = map (\ (Segment coord _) -> coord) . lineSegments
 
 lineSegments :: Line -> [LineSegment]
 lineSegments = lineSegments' False
@@ -427,3 +421,5 @@ lineTiles segs = map (uncurry go) (segs `zip` tailDef segs segs)
   where
     go (Segment c1 dir1) (Segment _ dir2) = (c1, LineTile (invertDir dir1) dir2)
 
+lineToTiles :: Line -> [(Coord, Tile)]
+lineToTiles = lineTiles . lineSegmentsExt
