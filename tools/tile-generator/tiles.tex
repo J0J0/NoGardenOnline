@@ -11,6 +11,7 @@
 \let\r=\size
 
 \definecolor{lineColor}{HTML}{808080}
+\definecolor{lightOrange}{HTML}{ffd787}
 
 \tikzset{ line/.style={ color=lineColor
                       , line width={2*\r/3}
@@ -19,12 +20,28 @@
                       , delta angle=90}
 }
 
-\newcommand{\linePicture}[2]{%
-    \scriptAdd{pdftocairo -svg -f \thepage\space -l \thepage\space \jobname.pdf #1.svg}
-    \begin{tikzpicture}
+\newenvironment{pic}[2][]{%
+    \scriptAdd{pdftocairo -svg -f \thepage\space -l \thepage\space \jobname.pdf #2.svg}
+    \begin{tikzpicture}[#1]
         \path[clip] (-\size,-\size) rectangle (\size,\size);
-        \draw[line] #2;
+}{%
     \end{tikzpicture}
+}
+
+
+\newcommand{\linePicture}[2]{%
+    \begin{pic}{#1}
+        \draw[line] #2;
+    \end{pic}
+}
+
+\newcommand{\arrowPicture}[2]{%
+    \begin{pic}[color=lightOrange, rotate=#2]{#1}
+        \begin{scope}[shift={(-0.05*\r,0)}]
+            \fill (-0.35*\r,-0.2*\r) rectangle (0.35*\r,0.2*\r);
+        \end{scope}
+        \fill (0,0.25*2*\r) -- (0.4*2*\r,0) -- (0,-0.25*2*\r) -- cycle;
+    \end{pic}
 }
 
 \begin{document}
@@ -35,4 +52,9 @@
 \linePicture{line-east-south}{(\r,0)  arc[start angle=90]}
 \linePicture{line-south-west}{(0,-\r) arc[start angle=0]}
 \linePicture{line-north-west}{(-\r,0) arc[start angle=270]}
+
+\arrowPicture{hint-arrow-right}{0}
+\arrowPicture{hint-arrow-up}{90}
+\arrowPicture{hint-arrow-left}{180}
+\arrowPicture{hint-arrow-down}{270}
 \end{document}
