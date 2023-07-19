@@ -23,8 +23,10 @@ app = mdo
         [ attachWith handle_click    (current state) (tileClick $ tileEvents $ ev)
         , attachWith handle_hover    (current state) (tileHover $ tileEvents $ ev)
         , attachWith handle_mouseout (current state) (mouseout ev)
+        , attachWith handle_ctrls    (current state) ctrls
         ]
     ev <- boardW state
+    ctrls <- buttonsW
     return ()
   where
     handle_click :: State -> Coord -> State
@@ -33,6 +35,9 @@ app = mdo
     handle_hover = flip hover
     handle_mouseout :: State -> () -> State
     handle_mouseout state _ = state { previewLine = Nothing }
+    handle_ctrls :: State -> ButtonAction -> State
+    handle_ctrls state AbortLine  = cancelCurrentLine state
+    handle_ctrls state ResetBoard = resetBoard state
 
 data BoardEvents t = BoardEvents { tileEvents :: TileEvents t
                                  , mouseout   :: Event t () }
@@ -45,6 +50,17 @@ boardW state = do
         leftmostTileEvents <$> mapM (rowW state) [y_max, y_max-1 .. -1]
     return $ BoardEvents { tileEvents = te
                          , mouseout   = domEvent Mouseout e }
+
+data ButtonAction = AbortLine | ResetBoard
+
+buttonsW :: DomBuilder t m => m (Event t ButtonAction)
+buttonsW = divClass "controls" $ fmap leftmost $ sequence $
+    [ AbortLine  <$$ button "Abort line"
+    , ResetBoard <$$ button "Reset board" ]
+  where
+    (<$$) :: (Functor m, Functor f) =>  a -> m (f b) -> m (f a)
+    (<$$) = fmap . (<$)
+
 
 rowW :: M t m
      => Dynamic t State -> Int -> m (TileEvents t)
@@ -368,7 +384,6 @@ joinTwoLines l1 l2 = do
 
 --------------------
 
-{-
 cancelCurrentLine :: State -> State
 cancelCurrentLine st = case currentLine st of
     [] -> st
@@ -378,9 +393,6 @@ cancelCurrentLine st = case currentLine st of
              }
   where
     gen_updates = map (\ t -> (t, EmptyTile)) . concatMap lineCoordinates
--}
-
---------------------
 
 resetBoard :: State -> State
 resetBoard st = State { board = reset_tile `A.amap` board st

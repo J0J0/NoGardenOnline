@@ -21,6 +21,13 @@ div.tile {
     background-color: #cccccc;
 }
 
+div.controls > button {
+    font-size: 120%;
+}
+div.controls > button:not(:last-child) {
+    margin-right: 0.3em;
+}
+
 div.tile.invisible {
     background-color: transparent;
 }
