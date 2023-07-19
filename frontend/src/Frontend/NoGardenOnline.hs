@@ -19,30 +19,41 @@ type M t m = (DomBuilder t m, PostBuild t m, MonadSample t m)
 app :: (M t m, MonadFix m, MonadHold t m) => m ()
 app = mdo
     el "h1" $ text "NoGardenOnline"
-    state <- holdDyn testState $
-        leftmost [ attachWith handle_click (current state) (tileClick ev)
-                 , attachWith handle_hover (current state) (tileHover ev) ]
+    state <- holdDyn testState $ leftmost $
+        [ attachWith handle_click    (current state) (tileClick $ tileEvents $ ev)
+        , attachWith handle_hover    (current state) (tileHover $ tileEvents $ ev)
+        , attachWith handle_mouseout (current state) (mouseout ev)
+        ]
     ev <- boardW state
     return ()
   where
     handle_click :: State -> Coord -> State
     handle_click  = const . addLine
-    
     handle_hover :: State -> Coord -> State
     handle_hover = flip hover
+    handle_mouseout :: State -> () -> State
+    handle_mouseout state _ = state { previewLine = Nothing }
+
+data BoardEvents t = BoardEvents { tileEvents :: TileEvents t
+                                 , mouseout   :: Event t () }
 
 boardW :: M t m
-       => Dynamic t State -> m (TileEvents t)
+       => Dynamic t State -> m (BoardEvents t)
 boardW state = do
-    divClass "board" $ do
+    (e, te) <- elAttr' "div" ("class" =: "board") $ do
         y_max <- sample $ (snd . boardMax' . board) <$> current state
         leftmostTileEvents <$> mapM (rowW state) [y_max, y_max-1 .. -1]
+    return $ BoardEvents { tileEvents = te
+                         , mouseout   = domEvent Mouseout e }
 
 rowW :: M t m
      => Dynamic t State -> Int -> m (TileEvents t)
 rowW state y = divClass "row" $ do
     x_max <- sample $ (fst . boardMax' . board) <$> current state
     leftmostTileEvents <$> mapM (\ x -> tileW state (x,y)) [-1 .. x_max]
+
+data TileEvents t = TileEvents { tileClick :: Event t Coord
+                               , tileHover :: Event t Coord }
 
 leftmostTileEvents :: Reflex t => [TileEvents t] -> TileEvents t
 leftmostTileEvents = from_tuple . both leftmost . unzip . map to_tuple
@@ -51,9 +62,6 @@ leftmostTileEvents = from_tuple . both leftmost . unzip . map to_tuple
     to_tuple ev = (tileClick ev, tileHover ev)
     from_tuple :: (Event t Coord, Event t Coord) -> TileEvents t
     from_tuple (clickE,hoverE) = TileEvents clickE hoverE
-
-data TileEvents t = TileEvents { tileClick :: Event t Coord
-                               , tileHover :: Event t Coord }
 
 tileW :: M t m
       => Dynamic t State
