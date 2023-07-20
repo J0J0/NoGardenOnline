@@ -9,4 +9,7 @@ pdf2svgs:
 	sh convert-pdf-to-svgs.sh
 
 clean:
-	rm tiles.aux tiles.log tiles.pdf convert-pdf-to-svgs.sh line-east-south.svg line-east-west.svg line-north-east.svg line-north-south.svg line-north-west.svg line-south-west.svg
+	# remove *.svg from last build
+	rm --force $$(rev convert-pdf-to-svgs.sh | cut -d' ' -f1 | rev)
+	# remove TeX build artifacts and conversion script
+	rm --force tiles.aux tiles.log tiles.pdf convert-pdf-to-svgs.sh
