@@ -3,7 +3,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Frontend.NoGardenOnline (app) where
+module NoGardenOnline (app) where
 
 import Protolude hiding (State, state, lines)
 
