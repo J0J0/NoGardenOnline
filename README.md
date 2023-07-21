@@ -26,7 +26,7 @@ To do this with google's `closure-compiler`, you can run `make minify`.
 You almost certainly want to use the Nix binary cache at `reflex-frp.org`.
 In order to do so, either add the cache and key manually as described
 [here (only step 2)](https://github.com/obsidiansystems/obelisk#installing-obelisk),
-or let the `reflex-platform/try-reflex` script patch your Nix config (see also [next section](#What-is-Nix)).
+or let the `reflex-platform/try-reflex` script patch your Nix config (see also [next section](#what-is-nix)).
 
 Then simply run `make`.
 
@@ -36,7 +36,7 @@ Then simply run `make`.
 — from its homepage <https://nixos.org/>.
 
 If you can get Nix through the package manager of your operating system, you
-might prefer to do so and continue with the [previous section](#Nix-installed-but-new-to-reflex-platform).
+might prefer to do so and continue with the [previous section](#nix-installed-but-new-to-reflex-platform).
 
 Otherwise, you can have `reflex-platform` install Nix for you.
 
@@ -52,4 +52,4 @@ have Nix installed).
 
 3. After it finished, quit the new shell it opened.
 
-Now, you can [build this project](#Nix-and-reflex-platform-already-set-up).
+Now, you can [build this project](#nix-and-reflex-platform-already-set-up).
