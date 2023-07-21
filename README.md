@@ -4,6 +4,8 @@ to the [reflex(-dom)](https://hackage.haskell.org/package/reflex-dom)
 [FRP](https://wiki.haskell.org/Functional_Reactive_Programming) framework
 for running directly in the web browser.
 
+Play it [here](https://homepages.uni-regensburg.de/~prj05723/nogardenonline/).
+
 ## Game rules
 The goal is to fill the rectangular game field with horizontal and vertical lines,
 such that each line starts and ends "outside" of the field. A started line extends
