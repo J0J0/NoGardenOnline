@@ -19,6 +19,7 @@ div.tile {
     height: var(--tilesize);
     margin: 1px;
     background-color: #cccccc;
+    background-size: cover;
 }
 
 div.controls > button {
