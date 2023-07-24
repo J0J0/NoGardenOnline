@@ -30,24 +30,24 @@ app = mdo
     el "h1" $ text "NoGardenOnline"
     el "p" $ text gameDescription
     state <- holdDyn testState $ leftmost $
-        [ attachWith handle_click    (current state) (tileClick $ tileEvents $ ev)
-        , attachWith handle_hover    (current state) (tileHover $ tileEvents $ ev)
-        , attachWith handle_mouseout (current state) (mouseout ev)
-        , attachWith handle_ctrls    (current state) ctrls
+        [ attachWithMaybe handle_click    (current state) (tileClick $ tileEvents $ ev)
+        , attachWithMaybe handle_hover    (current state) (tileHover $ tileEvents $ ev)
+        , attachWith      handle_mouseout (current state) (mouseout ev)
+        , attachWithMaybe handle_ctrls    (current state) ctrls
         ]
     ev <- boardW state
     ctrls <- buttonsW
     return ()
   where
-    handle_click :: State -> Coord -> State
+    handle_click :: State -> Coord -> Maybe State
     handle_click  = const . addLine
-    handle_hover :: State -> Coord -> State
+    handle_hover :: State -> Coord -> Maybe State
     handle_hover = flip hover
     handle_mouseout :: State -> () -> State
     handle_mouseout state _ = state { previewLine = Nothing }
-    handle_ctrls :: State -> ButtonAction -> State
+    handle_ctrls :: State -> ButtonAction -> Maybe State
     handle_ctrls state AbortLine  = cancelCurrentLine state
-    handle_ctrls state ResetBoard = resetBoard state
+    handle_ctrls state ResetBoard = Just $ resetBoard state
 
 data BoardEvents t = BoardEvents { tileEvents :: TileEvents t
                                  , mouseout   :: Event t () }
@@ -275,15 +275,16 @@ isEmptyLine = isNothing . guardEmptyLine
 
 --------------------
 
-hover :: Coord -> State -> State
-hover (x,y) st = st { previewLine = (if null (currentLine st)
-                          then startLine mx my x y
-                          else continueLine st x y)
-                          <&> extendLine st
---                          >>= guardEmptyLine
-                    }
-  where
-      (mx,my) = boardMax (board st)
+hover :: Coord -> State -> Maybe State
+hover (x,y) st = do
+    let (mx,my) = boardMax (board st)
+        new_prev = extendLine st <$> case currentLine st of
+            [] -> startLine mx my x y
+            _  -> continueLine st x y
+    
+    if isNothing (previewLine st) && isNothing new_prev
+    then Nothing
+    else Just $ st { previewLine = new_prev }
 
 startLine :: Int -> Int -> Int -> Int -> Maybe Line
 startLine mx my x y = case (x,mx-x,y,my-y) of
@@ -332,23 +333,25 @@ extendStraight st (Segment c dir) = Straight <$ takeWhile isEmptyTile tiles
 
 --------------------
 
-addLine :: State -> State
-addLine st = case previewLine st of
-    Nothing -> st
-    Just l  -> if lineComplete st l
-               then State { board = maybe (board st) (board st A.//) (lineToTiles <$> joinRevLines (l : currentLine st))
-                          , currentLine = []
-                          , previewLine = Nothing
-                          }
-               else if isEmptyLine l then st
-                    else let new_current_line = l : currentLine st
-                         in st { board = maybe (board st) (board st A.//) (lineToTiles <$> joinRevLines new_current_line)
-                               , currentLine = new_current_line
+addLine :: State -> Maybe State
+addLine st = do
+    l <- previewLine st
+    constr_line <- joinRevLines (l : currentLine st)
+    let new_board = board st A.// (lineToTiles constr_line)
+    case lineComplete (board st) l of
+        True -> return $ State { board = new_board
+                               , currentLine = []
                                , previewLine = Nothing
                                }
+        False -> if isEmptyLine l
+                 then Nothing
+                 else return $ State { board = new_board
+                                     , currentLine = l : currentLine st
+                                     , previewLine = Nothing
+                                     }
 
-lineComplete :: State -> Line -> Bool
-lineComplete st l =
+lineComplete :: Board -> Line -> Bool
+lineComplete b l =
     case lastDef (startSeg l, 1) (lineSegments l `zip` repeat 0) of
         (Segment (x,y) dir, t) ->
             case (x+t, mx-x+t, y+t, my-y+t, dir) of
@@ -358,7 +361,7 @@ lineComplete st l =
                 (_,_,_,0, North) -> True
                 _                -> False
   where
-    (mx,my) = boardMax (board st)
+    (mx,my) = boardMax b
 
 joinLines :: [Line] -> Maybe Line
 joinLines = foldrMay1 joinTwoLines
@@ -394,13 +397,13 @@ joinTwoLines l1 l2 = do
 
 --------------------
 
-cancelCurrentLine :: State -> State
+cancelCurrentLine :: State -> Maybe State
 cancelCurrentLine st = case currentLine st of
-    [] -> st
-    ls -> st { board = board st A.// gen_updates ls
-             , previewLine = Nothing
-             , currentLine = []
-             }
+    [] -> Nothing
+    ls -> Just $ State { board = board st A.// gen_updates ls
+                       , previewLine = Nothing
+                       , currentLine = []
+                       }
   where
     gen_updates = map (\ t -> (t, EmptyTile)) . concatMap lineCoordinates
 
