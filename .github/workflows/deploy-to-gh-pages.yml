@@ -1,0 +1,42 @@
+name: "Build and deploy to github pages"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  main:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v22
+      with:
+        extra_nix_config: |
+          binary-caches = https://cache.nixos.org https://nixcache.reflex-frp.org
+          binary-cache-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= ryantrinkle.com-1:JJiAKaRv9mWgpVAz8dwewnZe0AzzEAzPkagE9SP5NWI=
+
+    - name: Build with ghcjs
+      run: make
+
+    - name: Obtain closure-compiler
+      run: |
+        curl --location --output closure-compiler.jar 'https://repo.maven.apache.org/maven2/com/google/javascript/closure-compiler/v20230228/closure-compiler-v20230228.jar'
+        mkdir _bin
+        echo '#!/bin/sh' > _bin/closure-compiler
+        echo 'exec java -jar '"$(realpath closure-compiler.jar)"' "$@"' >> _bin/closure-compiler
+        chmod u+x _bin/closure-compiler
+        
+    - name: Use closure-compiler
+      run: |
+        export PATH="$(realpath _bin):$PATH"
+        make minify
+        
+    - name: Deploy to github pages
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        folder: result-bundled
+        branch: gh-pages
+        single-commit: true
