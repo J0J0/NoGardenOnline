@@ -8,6 +8,7 @@ executable frontend
     
     build-depends: base
                  , array
+                 , containers
                  , text
                  , protolude ^>= 0.3
                  , reflex-dom

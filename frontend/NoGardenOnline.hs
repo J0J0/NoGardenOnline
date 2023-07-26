@@ -3,25 +3,59 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module NoGardenOnline (app) where
+module NoGardenOnline (app, BoardSpec, defineBoard) where
 
 import Protolude hiding (State, state, lines)
+import Protolude.Error (error)
 
 import           Control.Monad.Fix        (MonadFix)
 import qualified Data.Array.IArray  as A
 import           Data.List                (lookup)
+import qualified Data.Set           as Set
 import qualified Data.Text          as T
 
 import Reflex.Dom
 
 
+data BoardSpec = BoardSpec { columns   :: Int
+                           , rows      :: Int
+                           , obstacles :: Set (Int,Int)  -- ^ (col,row)
+                           }
+
+-- | Safely create a game board specification. The origin of the board
+-- lies in the lower left corner. Obstacles are specified as @(column,row)@
+-- pairs, where numbering starts with 1.
+-- 
+-- /Example:/ @defineBoard 3 2 [(1,1)]@ represents the following board
+-- 
+-- @
+--   . . .
+--   X . .
+-- @
+-- 
+-- where @.@ and @X@ denote an empty and obstacle tile, respectively.
+defineBoard :: Int  -- ^ columns
+            -> Int  -- ^ rows
+            -> [(Int,Int)]  -- ^ obstacles
+            -> Maybe BoardSpec
+defineBoard col_count row_count os = do
+    guard $ col_count >= 1
+    guard $ row_count >= 1
+    guard $ all within_board set_os
+    return $ BoardSpec { columns   = col_count
+                       , rows      = row_count
+                       , obstacles = set_os    }
+  where
+    set_os = Set.fromList os
+    within_board (x,y) =
+        1 <= x && x <= col_count && 1 <= y && y <= row_count
 
 
 type M t m = (DomBuilder t m, PostBuild t m, MonadSample t m)
 
 app :: (M t m, MonadFix m, MonadHold t m) => m ()
 app = mdo
-    state <- holdDyn testState $ leftmost $
+    state <- holdDyn test_state $ leftmost $
         [ attachWithMaybe handle_click    (current state) (tileClick $ tileEvents $ ev)
         , attachWithMaybe handle_hover    (current state) (tileHover $ tileEvents $ ev)
         , attachWith      handle_mouseout (current state) (mouseout ev)
@@ -40,6 +74,9 @@ app = mdo
     handle_ctrls :: State -> ButtonAction -> Maybe State
     handle_ctrls state AbortLine  = cancelCurrentLine state
     handle_ctrls state ResetBoard = Just $ resetBoard state
+    
+    test_state = newState $ fromMaybe err $ defineBoard 7 6 [(2,2), (4,3)]
+    err = error "Excuse me?!"
 
 data BoardEvents t = BoardEvents { tileEvents :: TileEvents t
                                  , mouseout   :: Event t () }
@@ -164,21 +201,6 @@ foldrMay1 _ [x]    = return x
 foldrMay1 f (x:xs) = f x =<< foldrMay1 f xs
 
 
-testState = State b Nothing []
-  where
-    (bx,by) = (6,5)
-    bounds  = ((-1,-1),(bx+1,by+1))
-    b' = A.listArray bounds $ foreach (A.range bounds) $ \ (x,y) ->
-        if x < 0 || x > bx || y < 0 || y > by
-        then InvisibleTile
-        else EmptyTile
-    b = b' A.// [((1,1), ObstacleTile), ((3,2), ObstacleTile)]
-    --ls = [l1]
-    --l1 = Line (Segment (6,0) West) [Straight, Straight, TurnRight, Straight, TurnLeft, TurnRight]
-    --us = map (\ t -> (t, UsedTile)) [(6,0),(5,0),(4,0),(4,1),(4,2),(3,2)]
-    --b  = b1 A.// us
-
-
 data Tile = EmptyTile
           | LineTile CardinalDir CardinalDir
           | ObstacleTile
@@ -194,14 +216,28 @@ data LineSegment = Segment Coord CardinalDir
 data Line = Line { startSeg    :: LineSegment
                  , directions  :: [LineDir]
                  }
+data Orientation = Horizontal | Vertical
           
-data State = State { board :: Board
+data State = State { board       :: Board
                    , previewLine :: Maybe Line
                    , currentLine :: [Line]
                    }
 
-data Orientation = Horizontal | Vertical
-
+newState :: BoardSpec -> State
+newState bspec = State { board       = b
+                       , previewLine = Nothing
+                       , currentLine = []      }
+  where
+    (bx,by) = (columns bspec - 1, rows bspec - 1)
+    bounds  = ((-1,-1),(bx+1,by+1))
+    os      = Set.mapMonotonic (both (subtract 1)) (obstacles bspec)
+    b = A.listArray bounds $ foreach (A.range bounds) $ \ (x,y) ->
+        if x < 0 || x > bx || y < 0 || y > by
+        then InvisibleTile
+        else if (x,y) `Set.member` os
+             then ObstacleTile
+             else EmptyTile
+    
 
 
 dirToAngle :: CardinalDir -> Float
