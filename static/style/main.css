@@ -3,6 +3,14 @@
     --light-orange: #ffd787;
 }
 
+body {
+    max-width: 800px;
+}
+
+.center {
+    text-align: center;
+}
+
 div.board {
     border: 1px solid black;
     display: inline-block;

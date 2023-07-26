@@ -15,20 +15,12 @@ import qualified Data.Text          as T
 import Reflex.Dom
 
 
-gameDescription :: Text
-gameDescription =
-    "The goal is to fill the rectangular game field with horizontal and vertical lines,   \
-    \such that each line starts and ends \"outside\" of the field. A started line extends \
-    \in a straight manner until it hits a blocked tile or the outside. In the former      \
-    \case, the line must be continued in either possible direction."
 
 
 type M t m = (DomBuilder t m, PostBuild t m, MonadSample t m)
 
 app :: (M t m, MonadFix m, MonadHold t m) => m ()
 app = mdo
-    el "h1" $ text "NoGardenOnline"
-    el "p" $ text gameDescription
     state <- holdDyn testState $ leftmost $
         [ attachWithMaybe handle_click    (current state) (tileClick $ tileEvents $ ev)
         , attachWithMaybe handle_hover    (current state) (tileHover $ tileEvents $ ev)
