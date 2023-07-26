@@ -1,8 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main (main) where
 
-import Reflex.Dom
-
+import Reflex.Dom (mainWidgetInElementById)
 import qualified NoGardenOnline
 
 main :: IO ()
-main = mainWidget $ NoGardenOnline.app
+main = mainWidgetInElementById "app" $ NoGardenOnline.app
