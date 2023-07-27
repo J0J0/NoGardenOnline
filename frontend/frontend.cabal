@@ -10,7 +10,8 @@ executable frontend
                  , array
                  , containers
                  , text
-                 , protolude ^>= 0.3
+                 , protolude
+                 , ghcjs-dom
                  , reflex-dom
     
     default-language: Haskell2010

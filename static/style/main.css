@@ -4,6 +4,10 @@
 }
 
 body {
+    min-width: 520px;
+}
+
+p {
     max-width: 800px;
 }
 

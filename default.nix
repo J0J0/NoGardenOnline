@@ -1,6 +1,8 @@
 # default.nix
 { system ? builtins.currentSystem }:
 (import ./reflex-platform { inherit system; }).project ({ pkgs, ... }: {
+  #useWarp = true;
+  
   packages = {
     frontend = ./frontend;
   };

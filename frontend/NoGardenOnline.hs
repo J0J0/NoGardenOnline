@@ -3,10 +3,10 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module NoGardenOnline (app, BoardSpec, defineBoard) where
+module NoGardenOnline (app, BoardSpec, defineBoard, welcomeStubBoard) where
 
 import Protolude hiding (State, state, lines)
-import Protolude.Error (error)
+--import Protolude.Error (error)
 
 import           Control.Monad.Fix        (MonadFix)
 import qualified Data.Array.IArray  as A
@@ -50,13 +50,29 @@ defineBoard col_count row_count os = do
     within_board (x,y) =
         1 <= x && x <= col_count && 1 <= y && y <= row_count
 
+welcomeStubBoard :: BoardSpec
+welcomeStubBoard =
+    BoardSpec { columns   = 10
+              , rows      = 5
+              , obstacles = Set.fromList [ (2,1),(2,2),(2,3),(2,4),(2,5)
+                                         , (4,1),(4,2),(4,3),(4,4),(4,5)
+                                         , (3,3) -- H
+                                         , (6,1),(6,2),(6,3),(6,4),(6,5) -- I
+                                         , (9,1),(9,3),(9,4),(9,5) -- !
+                                         ]
+              }
+
 
 type M t m = (DomBuilder t m, PostBuild t m, MonadSample t m)
 
-app :: (M t m, MonadFix m, MonadHold t m) => m ()
-app = mdo
-    state <- holdDyn test_state $ leftmost $
-        [ attachWithMaybe handle_click    (current state) (tileClick $ tileEvents $ ev)
+app :: (M t m, MonadFix m, MonadHold t m)
+    => Dynamic t BoardSpec -> m ()
+app bspec = mdo
+    let new_state = newState <$> bspec
+    init_state <- sample (current new_state)
+    state <- holdDyn init_state $ leftmost $
+        [ tag (current new_state) (updated new_state)
+        , attachWithMaybe handle_click    (current state) (tileClick $ tileEvents $ ev)
         , attachWithMaybe handle_hover    (current state) (tileHover $ tileEvents $ ev)
         , attachWith      handle_mouseout (current state) (mouseout ev)
         , attachWithMaybe handle_ctrls    (current state) ctrls
@@ -74,9 +90,7 @@ app = mdo
     handle_ctrls :: State -> ButtonAction -> Maybe State
     handle_ctrls state AbortLine  = cancelCurrentLine state
     handle_ctrls state ResetBoard = Just $ resetBoard state
-    
-    test_state = newState $ fromMaybe err $ defineBoard 7 6 [(2,2), (4,3)]
-    err = error "Excuse me?!"
+
 
 data BoardEvents t = BoardEvents { tileEvents :: TileEvents t
                                  , mouseout   :: Event t () }
