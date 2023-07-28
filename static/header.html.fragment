@@ -1,0 +1,9 @@
+    <header>
+    <h1>No&ThinSpace;Garden&ThinSpace;Online</h1>
+    <ul>
+      <li><a href="index.html">Play</a></li>
+      <li><a href="rules.html">Rules</a></li>
+      <li><a href="editor.html">Create level</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    </header>

@@ -33,5 +33,9 @@ cd "$main_dir"
 cp --force --target="$target_dir" --recursive "$static_dir"/*
 cp --force --target="$target_dir" "$build_dir/all.js"
 
+cd "$target_dir"
+sed --in-place --regexp-extended -e '/^\s*<HEADER>/{r header.html.fragment' -e';d}' *.html
+rm --force header.html.fragment
+
 echo "Done. Test in web browser:"
 echo "file://$(realpath "$target_dir/index.html")"
