@@ -77,8 +77,8 @@ app bspec = mdo
         , attachWith      handle_mouseout (current state) (mouseout ev)
         , attachWithMaybe handle_ctrls    (current state) ctrls
         ]
-    ev <- boardW state
-    ctrls <- buttonsW
+    (ev, ctrls) <- divClass "BoardWithControls" $
+        (,) <$> boardW state <*> buttonsW
     return ()
   where
     handle_click :: State -> Coord -> Maybe State
