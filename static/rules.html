@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>NoGardenOnline - Rules</title>
+    <link rel="stylesheet" href="style/main.css">
+  </head>
+  <body>
+    <HEADER>
+    <main>
+      <h2>How to play</h2>
+      <div class="caveat">(<em>Note:</em> the following pictures are <em>not</em> interactive.
+        Use the link below, if you want to recreate the displayed situations.)</div>
+      
+      <ul class="rules-list">
+        <li>
+          You start with a game board of empty tiles (gray) and blocked tiles (black).
+          (<a href="index.html?size=(3,4)&blocked=(1,1),(3,1),(3,2),(2,4)">Play on this demo board</a>.)
+          <img src="img/rules/0.png" alt="some game board">
+        </li>
+        <li>
+          Click on the yellow arrows to start a line. It extends in a straight manner
+          until it hits a non-empty tile.
+          <img src="img/rules/1.png" alt="first line start">
+        </li>
+        <li>
+          Continue the process until the line leaves the board.
+          <img src="img/rules/2.png" alt="one complete line">
+        </li>
+        <li>
+          <div>
+            Repeat&nbsp;&hellip;
+            <img src="img/rules/3.png" alt="second line start">
+          </div>
+          <div>
+            this&nbsp;&hellip;
+            <img src="img/rules/4.png" alt="two complete lines">
+          </div>
+          <div>
+            process&nbsp;&hellip;
+            <img src="img/rules/5.png" alt="third line start">
+          </div>
+        </li>
+        <li>
+          &hellip;&nbsp;until the board has no empty tiles left and there is no
+          line under construction.
+          <img src="img/rules/6.png" alt="solved board">
+        </li>
+        <li>
+          If you notice that you cannot win anymore, hit the <em>Reset board</em> button
+          to start over.
+          <img src="img/rules/reset_hl.png" alt="unsolvable game state">
+        </li>
+        <li>
+          In case the line under construction causes the problem, you can also use the
+          <em>Abort line</em> button instead.
+          <img src="img/rules/abort_hl.png" alt="problem caused by current line">
+      </ul>
+    </main>
+  </body>
+</html>

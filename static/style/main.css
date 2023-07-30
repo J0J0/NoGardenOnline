@@ -183,3 +183,20 @@ div.tile.arrowup {
 div.tile.arrowdown {
     background-image: url("hint-arrow-down.svg")
 }
+
+
+div.caveat {
+    font-size: 90%;
+    color: gray;
+}
+
+.rules-list li:not(:last-child) {
+    margin-bottom: 1.2em;
+}
+.rules-list img {
+    display: block;
+    margin-top: 0.3em;
+}
+.rules-list li > div {
+    display: inline-block;
+}
