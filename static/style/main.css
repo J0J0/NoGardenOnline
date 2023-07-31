@@ -200,3 +200,21 @@ div.caveat {
 .rules-list li > div {
     display: inline-block;
 }
+
+
+dl {
+    margin-top: 0.7em;
+    margin-bottom: 1.5em;
+}
+dt {
+    font-weight: bolder;
+}
+dd {
+    margin-bottom: 0.5em;
+}
+
+code.block {
+    display: block;
+    text-align: center;
+    margin: 0.5em 0;
+}
