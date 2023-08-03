@@ -9,8 +9,10 @@ executable frontend
     build-depends: base
                  , array
                  , containers
-                 , text
                  , protolude
+                 , text
+                 , transformers
+                 , jsaddle
                  , ghcjs-dom
                  , reflex-dom
     
