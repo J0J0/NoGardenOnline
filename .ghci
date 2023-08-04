@@ -1,4 +1,4 @@
 :set -DUSE_WARP
 :set -fwarn-unused-imports
 :set -ifrontend
-:load Main
+:load NoGardenOnline

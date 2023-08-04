@@ -71,7 +71,7 @@ app bspec = mdo
     let new_state = newState <$> bspec
     init_state <- sample (current new_state)
     state <- holdDyn init_state $ leftmost $
-        [ tag (current new_state) (updated new_state)
+        [ updated new_state
         , attachWithMaybe handle_click    (current state) (tileClick $ tileEvents $ ev)
         , attachWithMaybe handle_hover    (current state) (tileHover $ tileEvents $ ev)
         , attachWith      handle_mouseout (current state) (mouseout ev)
