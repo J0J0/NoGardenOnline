@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>NoGardenOnline - Level editor</title>
+    <link rel="stylesheet" href="style/main.css">
+  </head>
+  <body>
+    <header>
+    <h1>No&ThinSpace;Garden&ThinSpace;Online</h1>
+    <ul>
+      <li><a href="index.html">Play</a></li>
+      <li><a href="rules.html">Rules</a></li>
+      <li><a href="editor.html">Create level</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    </header>
+    <main>
+      <h2>Create your own level – maybe soon :)</h2>
+      <p>There is no graphical level editor yet. However, you can get any game board you want
+      by loading the <a href="index.html">main page</a> with the correct parameters:
+      <dl>
+        <dt>size</dt>
+        <dd>Board size in the format <code>(number of columns, number of rows)</code>&ThinSpace;.
+        <!---->
+        <dt>blocked</dt>
+        <dd>Blocked tiles in the format <code>(x1,y1),...,(xn,yn)</code>&ThinSpace;. The lower left
+          tile in the board has coordinate <code>(1,1)</code>&ThinSpace;.
+      </dl>
+      </p>
+      
+      <p>Example: The parameters of
+      <a href="index.html?size=(3,4)&blocked=(1,1),(3,1),(3,2),(2,4)">this link</a>
+      let you play on the demo board used on the <a href="rules.html">Rules</a> page:
+      <code class="block">?size=(3,4)&amp;blocked=(1,1),(3,1),(3,2),(2,4)</code>
+      </p>
+      
+      <p>Note that you always have to provide both parameters, even if <code>blocked=</code>
+      is empty.</p>
+    </main>
+  </body>
+</html>

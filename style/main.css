@@ -1,0 +1,249 @@
+:root {
+    --tilesize: 40px;
+    --mini-tile-size: calc(0.3 * var(--tilesize));
+    --light-orange: #ffd787;
+}
+
+body {
+    min-width: 530px;
+    margin: 0;
+}
+
+
+header {
+    background-color: var(--light-orange);
+    padding: 1.3em 5%;
+}
+
+header > h1 {
+    margin: 0;
+    margin-bottom: 1rem;
+    font-size: max(2em,4vw);
+}
+
+header > ul {
+    font-size: 0;
+    padding: 0;
+    margin-bottom: 0;
+}
+
+header > ul > li {
+    font-size: large;
+    list-style-type: none;
+    display: inline;
+}
+header > ul > li:not(:last-child):after {
+    content: '|';
+    margin: 0 1em;
+}
+header > ul > li:first-child:before {
+    content: '|';
+    margin: 0 1em 0 0;
+}
+header > ul > li:last-child:after {
+    content: '|';
+    margin: 0 0 0 1em;
+}
+
+
+main {
+    margin: 1.5%;
+    max-width: 800px;
+}
+
+
+#app {
+    max-width: 800px;
+    text-align: center;
+}
+
+.BoardWithControls {
+    display: inline-block;
+}
+
+div.board {
+    border: 1px solid black;
+    display: inline-block;
+    line-height: 0pt;
+}
+
+div.controls > button {
+    font-size: 120%;
+}
+div.controls > button:not(:last-child) {
+    margin-right: 0.3em;
+}
+
+div.row {
+    display: block;
+    white-space: nowrap;
+}
+
+div.tile {
+    display: inline-block;
+    width: var(--tilesize);
+    height: var(--tilesize);
+    margin: 1px;
+    background-color: #cccccc;
+    background-size: cover;
+}
+
+div.tile.invisible {
+    background-color: transparent;
+}
+
+div.tile.obstacle {
+    background-color: black;
+}
+
+div.tile.invalid {
+    display: none;
+}
+
+div.tile.northsouth {
+    background-image: url("line-north-south.svg")
+}
+div.tile.eastsouth {
+    background-image: url("line-east-south.svg")
+}
+div.tile.northeast {
+    background-image: url("line-north-east.svg")
+}
+div.tile.southwest {
+    background-image: url("line-south-west.svg")
+}
+div.tile.eastwest {
+    background-image: url("line-east-west.svg")
+}
+div.tile.northwest {
+    background-image: url("line-north-west.svg")
+}
+
+div.tile.hintnorthsouth {
+    background-image: url("line-hint-north-south.svg")
+}
+div.tile.hinteastsouth {
+    background-image: url("line-hint-east-south.svg")
+}
+div.tile.hintnortheast {
+    background-image: url("line-hint-north-east.svg")
+}
+div.tile.hintsouthwest {
+    background-image: url("line-hint-south-west.svg")
+}
+div.tile.hinteastwest {
+    background-image: url("line-hint-east-west.svg")
+}
+div.tile.hintnorthwest {
+    background-image: url("line-hint-north-west.svg")
+}
+
+div.tile.current.northsouth {
+    background-image: url("curline-north-south.svg")
+}
+div.tile.current.eastsouth {
+    background-image: url("curline-east-south.svg")
+}
+div.tile.current.northeast {
+    background-image: url("curline-north-east.svg")
+}
+div.tile.current.southwest {
+    background-image: url("curline-south-west.svg")
+}
+div.tile.current.eastwest {
+    background-image: url("curline-east-west.svg")
+}
+div.tile.current.northwest {
+    background-image: url("curline-north-west.svg")
+}
+
+div.tile.solved.northsouth {
+    background-image: url("solline-north-south.svg")
+}
+div.tile.solved.eastsouth {
+    background-image: url("solline-east-south.svg")
+}
+div.tile.solved.northeast {
+    background-image: url("solline-north-east.svg")
+}
+div.tile.solved.southwest {
+    background-image: url("solline-south-west.svg")
+}
+div.tile.solved.eastwest {
+    background-image: url("solline-east-west.svg")
+}
+div.tile.solved.northwest {
+    background-image: url("solline-north-west.svg")
+}
+
+div.tile.arrowright {
+    background-image: url("hint-arrow-right.svg")
+}
+div.tile.arrowleft {
+    background-image: url("hint-arrow-left.svg")
+}
+div.tile.arrowup {
+    background-image: url("hint-arrow-up.svg")
+}
+div.tile.arrowdown {
+    background-image: url("hint-arrow-down.svg")
+}
+
+
+div.LevelChooser {
+    margin: 1.5em 20%;
+}
+div.LevelChooser > p {
+    font-size: 120%;
+    margin-bottom: 0.5em;
+}
+div.MiniPreview {
+    display: inline-block;
+    margin: 10px;
+}
+.MiniPreview div.board {
+    cursor: pointer;
+    padding: calc(0.3 * var(--mini-tile-size));
+}
+.MiniPreview div.tile {
+    width: var(--mini-tile-size);
+    height: var(--mini-tile-size);
+}
+.MiniPreview div.tile.invisible {
+    display: none;
+}
+
+
+div.caveat {
+    font-size: 90%;
+    color: gray;
+}
+
+.rules-list li:not(:last-child) {
+    margin-bottom: 1.2em;
+}
+.rules-list img {
+    display: block;
+    margin-top: 0.3em;
+}
+.rules-list li > div {
+    display: inline-block;
+}
+
+
+dl {
+    margin-top: 0.7em;
+    margin-bottom: 1.5em;
+}
+dt {
+    font-weight: bolder;
+}
+dd {
+    margin-bottom: 0.5em;
+}
+
+code.block {
+    display: block;
+    text-align: center;
+    margin: 0.5em 0;
+}
