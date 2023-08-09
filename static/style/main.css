@@ -1,5 +1,6 @@
 :root {
     --tilesize: 40px;
+    --mini-tile-size: calc(0.3 * var(--tilesize));
     --light-orange: #ffd787;
 }
 
@@ -95,6 +96,10 @@ div.tile.obstacle {
     background-color: black;
 }
 
+div.tile.invalid {
+    display: none;
+}
+
 div.tile.northsouth {
     background-image: url("line-north-south.svg")
 }
@@ -182,6 +187,30 @@ div.tile.arrowup {
 }
 div.tile.arrowdown {
     background-image: url("hint-arrow-down.svg")
+}
+
+
+div.LevelChooser {
+    margin: 1.5em 20%;
+}
+div.LevelChooser > p {
+    font-size: 120%;
+    margin-bottom: 0.5em;
+}
+div.MiniPreview {
+    display: inline-block;
+    margin: 10px;
+}
+.MiniPreview div.board {
+    cursor: pointer;
+    padding: calc(0.3 * var(--mini-tile-size));
+}
+.MiniPreview div.tile {
+    width: var(--mini-tile-size);
+    height: var(--mini-tile-size);
+}
+.MiniPreview div.tile.invisible {
+    display: none;
 }
 
 

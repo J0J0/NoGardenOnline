@@ -5,6 +5,7 @@ version:            0.1.0
 executable frontend
     main-is: Main.hs
     other-modules: NoGardenOnline
+                   Backports
     
     build-depends: base
                  , array

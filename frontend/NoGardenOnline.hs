@@ -3,7 +3,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module NoGardenOnline (app, BoardSpec, defineBoard, welcomeStubBoard) where
+module NoGardenOnline (app, miniPreviewApp, BoardSpec, defineBoard, welcomeStubBoard) where
 
 import Protolude hiding (State, state, lines)
 --import Protolude.Error (error)
@@ -15,6 +15,8 @@ import qualified Data.Set           as Set
 import qualified Data.Text          as T
 
 import Reflex.Dom
+
+import qualified Backports as A ((!?))
 
 
 data BoardSpec = BoardSpec { columns   :: Int
@@ -63,8 +65,9 @@ welcomeStubBoard =
               }
 
 
-type M t m = (DomBuilder t m, PostBuild t m, MonadSample t m)
+type M t m = (DomBuilder t m, PostBuild t m, MonadSample t m, MonadHold t m)
 
+-- | The main application that allows to play the game.
 app :: (M t m, MonadFix m, MonadHold t m)
     => Dynamic t BoardSpec -> m ()
 app bspec = mdo
@@ -78,7 +81,7 @@ app bspec = mdo
         , attachWithMaybe handle_ctrls    (current state) ctrls
         ]
     (ev, ctrls) <- divClass "BoardWithControls" $
-        (,) <$> boardW state <*> buttonsW
+        (,) <$> boardW bspec state <*> buttonsW
     return ()
   where
     handle_click :: State -> Coord -> Maybe State
@@ -92,15 +95,26 @@ app bspec = mdo
     handle_ctrls state ResetBoard = Just $ resetBoard state
 
 
+-- | Uses the same board widget as 'app' to display a non-interactive
+-- preview of a given 'BoardSpec'. Returns a click 'Event' with respect
+-- to the whole preview board.
+miniPreviewApp :: M t m => BoardSpec -> m (Event t BoardSpec)
+miniPreviewApp bspec = do
+    (e, _) <- elAttr' "div" ("class" =: "MiniPreview") $
+                boardW (constDyn bspec) (constDyn $ newState bspec)
+    return $ bspec <$ domEvent Click e
+
+
 data BoardEvents t = BoardEvents { tileEvents :: TileEvents t
                                  , mouseout   :: Event t () }
 
 boardW :: M t m
-       => Dynamic t State -> m (BoardEvents t)
-boardW state = do
-    (e, te) <- elAttr' "div" ("class" =: "board") $ do
-        y_max <- sample $ (snd . boardMax' . board) <$> current state
-        leftmostTileEvents <$> mapM (rowW state) [y_max, y_max-1 .. -1]
+       => Dynamic t BoardSpec -> Dynamic t State -> m (BoardEvents t)
+boardW bspec state = do
+    (e, teE) <- elAttr' "div" ("class" =: "board") $
+        dyn $ ffor (rows <$> bspec) $ \ y_max ->
+            leftmostTileEvents <$> mapM (rowW bspec state) [y_max, y_max-1 .. -1]
+    te <- flattenTileEventsE teE
     return $ BoardEvents { tileEvents = te
                          , mouseout   = domEvent Mouseout e }
 
@@ -116,10 +130,12 @@ buttonsW = divClass "controls" $ fmap leftmost $ sequence $
 
 
 rowW :: M t m
-     => Dynamic t State -> Int -> m (TileEvents t)
-rowW state y = divClass "row" $ do
-    x_max <- sample $ (fst . boardMax' . board) <$> current state
-    leftmostTileEvents <$> mapM (\ x -> tileW state (x,y)) [-1 .. x_max]
+     => Dynamic t BoardSpec -> Dynamic t State -> Int -> m (TileEvents t)
+rowW bspec state y = do
+    teE <- divClass "row" $ dyn $
+        ffor (columns <$> bspec) $ \ x_max ->
+            leftmostTileEvents <$> mapM (\ x -> tileW state (x,y)) [-1 .. x_max]
+    flattenTileEventsE teE
 
 data TileEvents t = TileEvents { tileClick :: Event t Coord
                                , tileHover :: Event t Coord }
@@ -132,6 +148,11 @@ leftmostTileEvents = from_tuple . both leftmost . unzip . map to_tuple
     from_tuple :: (Event t Coord, Event t Coord) -> TileEvents t
     from_tuple (clickE,hoverE) = TileEvents clickE hoverE
 
+flattenTileEventsE :: M t m => Event t (TileEvents t) -> m (TileEvents t)
+flattenTileEventsE teE =
+        TileEvents <$> (switchHold never (tileClick <$> teE))
+                   <*> (switchHold never (tileHover <$> teE))
+
 tileW :: M t m
       => Dynamic t State
       -> Coord -> m (TileEvents t)
@@ -141,15 +162,16 @@ tileW state coord = do
   where
     dyn_class =
         ffor state $ \ (State {board = b, previewLine = prev, currentLine = cur}) ->
-            case b A.! coord of
-                EmptyTile     ->
+            case b A.!? coord of
+                Just EmptyTile     ->
                     display_prev_line prev <> continue_hint prev cur b
-                ObstacleTile  ->
+                Just ObstacleTile  ->
                     " obstacle"
-                InvisibleTile ->
+                Just InvisibleTile ->
                     " invisible" <> start_hint prev cur b <> continue_hint prev cur b
-                lt@(LineTile _ _) -> -- FIXME: buggy for equal line tile dirs
+                Just lt@(LineTile _ _) -> -- FIXME: buggy for equal line tile dirs
                     " " <> line_tile_to_classname lt <> highlight_current cur <> highlight_solved cur b
+                Nothing -> " invalid"
     
     display_prev_line prev = fromMaybe "" $ do
         l  <- prev
