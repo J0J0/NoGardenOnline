@@ -1,5 +1,5 @@
 # NoGardenOnline
-Port of [NoGardenPuzzle](https://github.com/J0J0/games-poc/tree/main/NoGardenPuzzle)
+Enhanced port of [NoGardenPuzzle](https://github.com/J0J0/games-poc/tree/main/NoGardenPuzzle)
 to the [reflex(-dom)](https://hackage.haskell.org/package/reflex-dom)
 [FRP](https://wiki.haskell.org/Functional_Reactive_Programming) framework
 for running directly in the web browser.
